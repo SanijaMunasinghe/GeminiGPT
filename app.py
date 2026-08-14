@@ -1,23 +1,21 @@
 import streamlit as st
 import google.generativeai as genai
-from openai import OpenAI
 from PIL import Image
 import io
 import json
 
 # Setup Page Configuration
-st.set_page_config(page_title="OmniAgent - Dual Engine Master", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="Gemini OmniAgent", page_icon="🧠", layout="wide")
 
-st.markdown("# 🧠 OmniAgent: Fully Optimized Master System")
-st.markdown("Powered by synchronized execution of **ChatGPT (Logic Engine)** and **Gemini (Context & Creation Engine)**.")
+st.markdown("# 🧠 Gemini OmniAgent: Fully Optimized Master System")
+st.markdown("Powered entirely by **Google Gemini (Analytical Logic & Context Engines)** and **Imagen 3 (Visual Rendering Engine)**.")
 
 # System configuration validation
-if "OPENAI_API_KEY" not in st.secrets or "GEMINI_API_KEY" not in st.secrets:
-    st.error("Missing API configuration secrets. Please add OPENAI_API_KEY and GEMINI_API_KEY to Advanced Settings.")
+if "GEMINI_API_KEY" not in st.secrets:
+    st.error("Missing API configuration secrets. Please add GEMINI_API_KEY to Advanced Settings.")
     st.stop()
 
 # Initialize Client Configurations
-client_openai = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # User Command Input Interface
@@ -28,8 +26,8 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
     if not user_query.strip():
         st.warning("Please supply a functional execution command.")
     else:
-        # Step 1: Structural Parsing & Intent Evaluation via ChatGPT
-        with st.spinner("🤖 Phase 1: ChatGPT parsing intent, mapping architecture, and optimizing prompts..."):
+        # Step 1: Structural Parsing & Intent Evaluation via Gemini
+        with st.spinner("🤖 Phase 1: Gemini parsing intent and structuring tasks..."):
             try:
                 intent_prompt = f"""
                 Analyze this user request: "{user_query}"
@@ -39,17 +37,17 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                 
                 Respond ONLY with a valid JSON block containing exactly these two keys: "text_prompt" and "image_prompt".
                 If no image generation is explicitly or implicitly required, leave "image_prompt" empty.
+                Do not include markdown wrappers, backticks, or any additional text. Just raw JSON.
                 """
-                intent_response = client_openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a master systems orchestrator. You output strictly raw JSON format, no markdown wrappers, no backticks."},
-                        {"role": "user", "content": intent_prompt}
-                    ],
-                    response_format={"type": "json_object"}
-                )
                 
-                parsed_actions = json.loads(intent_response.choices.message.content)
+                # Using Gemini Flash to handle intent routing quickly
+                intent_model = genai.GenerativeModel(
+                    "gemini-2.5-flash",
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                intent_response = intent_model.generate_content(intent_prompt)
+                
+                parsed_actions = json.loads(intent_response.text)
                 text_directive = parsed_actions.get("text_prompt", user_query)
                 image_directive = parsed_actions.get("image_prompt", "")
                 
@@ -65,18 +63,12 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
             st.subheader("📝 Engine 1: Analytical Text & Logic")
             with st.spinner("Processing deep analysis..."):
                 try:
-                    # Multi-step loop synthesis: ChatGPT drafts, Gemini cross-verifies/polishes
-                    initial_draft = client_openai.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {"role": "system", "content": "Generate complete, precise, functional text content answering the directive."},
-                            {"role": "user", "content": text_directive}
-                        ]
-                    ).choices.message.content
+                    # Using Gemini Flash for robust writing, formatting, and analysis
+                    text_model = genai.GenerativeModel("gemini-2.5-flash")
+                    text_system_instruction = "Generate complete, precise, functional text content answering the directive. Format beautifully using markdown."
                     
-                    gemini_validator = genai.GenerativeModel("gemini-2.5-flash")
-                    final_text_response = gemini_validator.generate_content(
-                        f"Review, clean up, remove factual inconsistencies, and format this initial AI draft beautifully using markdown. Draft:\n{initial_draft}"
+                    final_text_response = text_model.generate_content(
+                        f"{text_system_instruction}\n\nDirective: {text_directive}"
                     ).text
                     
                     st.markdown(final_text_response)
@@ -89,15 +81,13 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
             if image_directive:
                 with st.spinner("Engaging Gemini Imagen 3 rendering engines..."):
                     try:
-                        # Cross-optimizing image directive with ChatGPT for maximum visual quality
-                        optimized_visual_prompt = client_openai.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": "Transform the input into a hyper-detailed, photorealistic, cinematic prompt for a high-end image generator."},
-                                {"role": "user", "content": image_directive}
-                            ]
-                        ).choices.message.content
+                        # Optimizing the image directive using Gemini text model for top visual results
+                        prompt_model = genai.GenerativeModel("gemini-2.5-flash")
+                        optimized_visual_prompt = prompt_model.generate_content(
+                            f"Transform the input into a hyper-detailed, photorealistic, cinematic prompt for a high-end image generator. Input: {image_directive}"
+                        ).text
                         
+                        # Call free Imagen 3 model
                         imagen_model = genai.GenerativeModel("imagen-3.0-generate-002")
                         image_result = imagen_model.generate_images(
                             prompt=optimized_visual_prompt,
