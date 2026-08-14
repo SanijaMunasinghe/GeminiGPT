@@ -56,8 +56,8 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                 text_directive = user_query
                 image_directive = ""
 
-        # Step 2: Content Generation Layout Split
-        col1, col2 = st.columns()
+        # Step 2: Content Generation Layout Split (Indented inside the execution block)
+        col1, col2 = st.columns(2)
 
         with col1:
             st.subheader("📝 Engine 1: Analytical Text & Logic")
