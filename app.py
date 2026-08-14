@@ -8,7 +8,7 @@ import json
 st.set_page_config(page_title="Gemini OmniAgent", page_icon="🧠", layout="wide")
 
 st.markdown("# 🧠 Gemini OmniAgent: Fully Optimized Master System")
-st.markdown("Powered entirely by **Google Gemini (Analytical Logic & Context Engines)** and **Imagen 3 (Visual Rendering Engine)**.")
+st.markdown("Powered entirely by **Google Gemini 3.7 (Analytical Logic & Context Engines)** and **Imagen 3 (Visual Rendering Engine)**.")
 
 # System configuration validation
 if "GEMINI_API_KEY" not in st.secrets:
@@ -26,8 +26,8 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
     if not user_query.strip():
         st.warning("Please supply a functional execution command.")
     else:
-        # Step 1: Structural Parsing & Intent Evaluation via Gemini
-        with st.spinner("🤖 Phase 1: Gemini parsing intent and structuring tasks..."):
+        # Step 1: Structural Parsing & Intent Evaluation via Gemini 3.7
+        with st.spinner("🤖 Phase 1: Gemini 3.7 parsing intent and structuring tasks..."):
             try:
                 intent_prompt = f"""
                 Analyze this user request: "{user_query}"
@@ -40,9 +40,9 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                 Do not include markdown wrappers, backticks, or any additional text. Just raw JSON.
                 """
                 
-                # Using Gemini Flash to handle intent routing quickly
+                # Using Gemini 3.7 Flash to handle intent routing quickly
                 intent_model = genai.GenerativeModel(
-                    "gemini-2.5-flash",
+                    "gemini-3.7-flash",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 intent_response = intent_model.generate_content(intent_prompt)
@@ -57,14 +57,14 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                 image_directive = ""
 
         # Step 2: Content Generation Layout Split
-        col1, col2 = st.columns([1, 1])
+        col1, col2 = st.columns()
 
         with col1:
             st.subheader("📝 Engine 1: Analytical Text & Logic")
-            with st.spinner("Processing deep analysis..."):
+            with st.spinner("Processing deep analysis with Gemini 3.7..."):
                 try:
-                    # Using Gemini Flash for robust writing, formatting, and analysis
-                    text_model = genai.GenerativeModel("gemini-2.5-flash")
+                    # Using Gemini 3.7 Flash for robust writing, formatting, and analysis
+                    text_model = genai.GenerativeModel("gemini-3.7-flash")
                     text_system_instruction = "Generate complete, precise, functional text content answering the directive. Format beautifully using markdown."
                     
                     final_text_response = text_model.generate_content(
@@ -81,8 +81,8 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
             if image_directive:
                 with st.spinner("Engaging Gemini Imagen 3 rendering engines..."):
                     try:
-                        # Optimizing the image directive using Gemini text model for top visual results
-                        prompt_model = genai.GenerativeModel("gemini-2.5-flash")
+                        # Optimizing the image directive using Gemini 3.7 text model for top visual results
+                        prompt_model = genai.GenerativeModel("gemini-3.7-flash")
                         optimized_visual_prompt = prompt_model.generate_content(
                             f"Transform the input into a hyper-detailed, photorealistic, cinematic prompt for a high-end image generator. Input: {image_directive}"
                         ).text
@@ -95,7 +95,7 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                             aspect_ratio="16:9"
                         )
                         
-                        img_bytes = image_result.generated_images[0].image.image_bytes
+                        img_bytes = image_result.generated_images.image.image_bytes
                         display_img = Image.open(io.BytesIO(img_bytes))
                         st.image(display_img, caption="Rendered by Gemini Imagen 3 Engine", use_column_width=True)
                         
