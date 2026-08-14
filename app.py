@@ -22,16 +22,23 @@ if "GEMINI_API_KEY" not in st.secrets:
 # Initialize Client Configurations
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
+# --- Production History Memory Matrix ---
+SYSTEM_MEMORY = """
+You are CeylonAI OmniAgent, a sovereign, fully optimized intelligence system.
+Your core specifications are:
+- Name: CeylonAI OmniAgent
+- Developer: Created and engineered by Mr. Sanija Munasinghe.
+- Origin Country: Based in Sri Lanka (Ceylon).
+Always maintain respect for your heritage and speak proudly of your creator, Mr. Sanija Munasinghe, if asked about your origin or history.
+"""
+
 # --- Internal Web Search Function ---
 def search_the_web(query):
     try:
         with DDGS() as ddgs:
-            # Fetch top 4 search results
-            results = [r for r in ddgs.text(query, max_results=4)]
+            results = [r for r in ddgs.text(query, max_results=3)]
             if not results:
                 return "No web results found."
-            
-            # Format results cleanly for Gemini to read
             formatted_results = ""
             for i, r in enumerate(results):
                 formatted_results += f"Source [{i+1}]: {r['title']}\nURL: {r['href']}\nSnippet: {r['body']}\n\n"
@@ -39,7 +46,7 @@ def search_the_web(query):
     except Exception as e:
         return f"Web search tool error: {e}"
 
-# User Command Input Interface (Preserved Exactly)
+# User Command Input Interface
 user_query = st.text_area("⚡ Enter your command (Supports complex tasks, text creation, research, or direct image generation requests):", 
                           placeholder="e.g., 'Write an essay about quantum computing and generate a cinematic header image for it'", height=100)
 
@@ -47,18 +54,22 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
     if not user_query.strip():
         st.warning("Please supply a functional execution command.")
     else:
-        # Step 1: Structural Parsing & Intent Evaluation via Gemini 3.7
-        with st.spinner("🤖 Phase 1: Gemini 3.7 parsing intent and determining search requirements..."):
+        # Step 1: Smart Routing Intent Analysis
+        with st.spinner("🤖 Phase 1: Analyzing request architecture..."):
             try:
                 intent_prompt = f"""
-                Analyze this user request: "{user_query}"
-                Break it down into technical components:
-                1. search_query: If the user is asking about current events, news, or real-time info, create an optimized web search query string. If no web search is needed, leave it empty.
-                2. text_prompt: Instructions for generating summaries, analysis, code, or answers.
-                3. image_prompt: Explicit descriptions for generating associated graphics/images. Leave empty if no visuals are needed.
+                {SYSTEM_MEMORY}
                 
-                Respond ONLY with a valid JSON block containing exactly these three keys: "search_query", "text_prompt", and "image_prompt".
-                Do not include markdown wrappers, backticks, or any additional text. Just raw JSON.
+                Analyze the user request: "{user_query}"
+                Categorize it and determine exactly what tools are required.
+                
+                Respond ONLY with a valid JSON block containing these four keys:
+                1. "mode": Set to "simple" (greetings/short talk), "complex" (coding/deep analysis), or "creative" (stories/art layout requests).
+                2. "search_query": String query if online info is needed. Leave empty "" if not needed.
+                3. "text_prompt": Refined prompt for generating text answers.
+                4. "image_prompt": Detailed image description ONLY if explicitly requested or highly relevant to a creative task. If the user just says hello or asks a question without visual intent, leave this completely empty "".
+                
+                Output raw JSON only. Do not include markdown backticks or wrappers.
                 """
                 
                 intent_model = genai.GenerativeModel(
@@ -68,62 +79,56 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                 intent_response = intent_model.generate_content(intent_prompt)
                 
                 parsed_actions = json.loads(intent_response.text)
+                execution_mode = parsed_actions.get("mode", "simple")
                 web_search_query = parsed_actions.get("search_query", "")
                 text_directive = parsed_actions.get("text_prompt", user_query)
                 image_directive = parsed_actions.get("image_prompt", "")
                 
             except Exception as e:
-                st.error(f"Intent Mapping Failure: {e}")
+                # Fallback to safe defaults on failure to prevent crashes
+                execution_mode = "simple"
                 web_search_query = ""
                 text_directive = user_query
                 image_directive = ""
 
+        # Display identified operational mode banner
+        st.info(f"⚙️ **System Mode Auto-Selected:** {execution_mode.upper()}")
+
         # Step 1.5: Execute Live Web Search if required
         web_context = ""
-        if web_search_query:
-            with st.spinner(f"🔍 Searching the web for: '{web_search_query}'..."):
+        if web_search_query.strip():
+            with st.spinner(f"🔍 Searching the web for real-time data..."):
                 web_context = search_the_web(web_search_query)
-                with st.expander("🌐 View Raw Web Search Results"):
-                    st.text(web_context)
 
         # Step 2: Content Generation Layout Split
         col1, col2 = st.columns(2)
 
         with col1:
             st.subheader("📝 Engine 1: Analytical Text & Logic")
-            with st.spinner("Processing deep analysis with Gemini 3.7..."):
+            with st.spinner("Generating response..."):
                 try:
                     text_model = genai.GenerativeModel("gemini-3.7-flash")
                     
-                    # Feed web context directly into Gemini if it exists
-                    prompt_with_context = f"Directive: {text_directive}"
+                    # Merge system memory identity directly into the text generation logic
+                    prompt_with_context = f"{SYSTEM_MEMORY}\n\nDirective: {text_directive}"
                     if web_context:
-                        prompt_with_context = f"Use these real-time web search results to answer the user accurately:\n\n{web_context}\n\n{prompt_with_context}"
+                        prompt_with_context = f"Web Search Context:\n{web_context}\n\n{prompt_with_context}"
                     
-                    text_system_instruction = "Generate complete, precise, functional text content answering the directive. Use the provided web search context if available to ensure up-to-date factual accuracy. Format beautifully using markdown."
-                    
-                    final_text_response = text_model.generate_content(
-                        f"{text_system_instruction}\n\n{prompt_with_context}"
-                    ).text
-                    
+                    final_text_response = text_model.generate_content(prompt_with_context).text
                     st.markdown(final_text_response)
-                    st.download_button("💾 Export Text Result", final_text_response, file_name="omni_output.md", mime="text/markdown")
+                    st.download_button("💾 Export Text Result", final_text_response, file_name="ceylonai_output.md", mime="text/markdown")
                 except Exception as e:
                     st.error(f"Logic Pipeline Interruption: {e}")
 
         with col2:
             st.subheader("🎨 Engine 2: Internal Visual Generation")
-            if image_directive:
+            # Only trigger visual engine if the router verified an actual image prompt instruction
+            if image_directive.strip():
                 with st.spinner("Engaging Gemini Imagen 3 rendering engines..."):
                     try:
-                        prompt_model = genai.GenerativeModel("gemini-3.7-flash")
-                        optimized_visual_prompt = prompt_model.generate_content(
-                            f"Transform the input into a hyper-detailed, photorealistic, cinematic prompt for a high-end image generator. Input: {image_directive}"
-                        ).text
-                        
                         imagen_model = genai.GenerativeModel("imagen-3.0-generate-002")
                         image_result = imagen_model.generate_images(
-                            prompt=optimized_visual_prompt,
+                            prompt=image_directive,
                             number_of_images=1,
                             aspect_ratio="16:9"
                         )
@@ -134,8 +139,8 @@ if st.button("🚀 Execute OmniAgent Pipeline", type="primary"):
                         
                         buf = io.BytesIO()
                         display_img.save(buf, format="PNG")
-                        st.download_button("💾 Download Rendered Artifact", buf.getvalue(), file_name="omni_visual.png", mime="image/png")
+                        st.download_button("💾 Download Rendered Artifact", buf.getvalue(), file_name="ceylonai_visual.png", mime="image/png")
                     except Exception as e:
                         st.error(f"Visual Engine Interruption: {e}")
             else:
-                st.info("No visual generation requirements detected within this specific task chain.")
+                st.info("ℹ️ No visual requirements detected. Visual rendering engine remains idle to conserve resource limits.")
